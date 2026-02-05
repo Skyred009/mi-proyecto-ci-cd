@@ -1,11 +1,13 @@
-name: Integración Continua
+name: CI/CD
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 jobs:
-  build:
+  ci:
+    name: CI (lint y tests)
     runs-on: ubuntu-latest
 
     steps:
@@ -20,5 +22,25 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
+      - name: Ejecutar lint
+        run: npm run lint
+
       - name: Ejecutar pruebas
         run: npm test --silent
+
+  deploy:
+    name: CD (Despliegue)
+    runs-on: ubuntu-latest
+    needs: ci
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Disparar despliegue en Render
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [ -n "$RENDER_DEPLOY_HOOK" ]; then
+            curl -X POST "$RENDER_DEPLOY_HOOK"
+          else
+            echo "RENDER_DEPLOY_HOOK no configurado; omitiendo deploy."
+          fi
